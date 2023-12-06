@@ -1,8 +1,8 @@
 import codecs
 import logging
-import numpy as np
 
 logger = logging.getLogger(__name__)
+
 
 class W2VEmbReader:
 	def __init__(self, emb_path, emb_dim=None):

@@ -1,7 +1,5 @@
 import re
 import enchant
-import wordninja
-# import splitter
 
 
 d = enchant.Dict('en_UK')
@@ -69,19 +67,4 @@ def preprocess_clean(text_string, remove_hashtags=True, remove_special_chars=Tru
         parsed_text = re.sub('(\!|\?)+','',parsed_text)
     return parsed_text
 
-def strip_hashtags(text):
-    text = preprocess_clean(text,False,False)
-    # hashtags = re.findall('#[\w\-]+', text)
-    # for tag in hashtags:
-    #     cleantag = tag[1:]
-    #     if d.check(cleantag) or dus.check(cleantag):
-    #         text = re.sub(tag, cleantag, text)
-    #         pass
-    #     else:
-    #         hashtagSplit = ""
-    #         for word in wordninja.split(cleantag):
-    #             hashtagSplit = hashtagSplit + word + " "
-    #         text = re.sub(tag, hashtagSplit, text)
-    # print(text)
-    return text
 

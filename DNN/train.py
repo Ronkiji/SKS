@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 
 import argparse
+import data_reader as dataset
 import logging
+from models import create_model
+from model_evaluator import Evaluator
 import numpy as np
-import scipy
+import tensorflow as tf
 from time import time
-# import time
-import sys
 import utils as U
 import pickle as pk
-import os
 
 '''
 import tensorflow as tf
@@ -18,7 +18,6 @@ config = tf.compat.v1.ConfigProto
 config.gpu_options.allow_growth = True
 session = tf.compat.v1.InteractiveSessionSession(config=config)
 '''
-import tensorflow as tf
 
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if gpus:
@@ -69,16 +68,6 @@ U.print_args(args)
 
 assert args.loss in {'mse', 'ce'}
 
-# if args.seed > 0:
-#     np.random.seed(args.seed)
-
-from model_evaluator import Evaluator
-import data_reader as dataset
-# if args.prompt_id:
-#
-# else:
-#     raise NotImplementedError
-
 ###############################################################################################################################
 ## Prepare data
 #
@@ -97,8 +86,6 @@ if not args.vocab_path:
 ###############################################################################################################################
 ## Some statistics
 #
-
-import keras.backend as K
 
 
 bincounts, mfs_list = U.bincounts(train_y)
@@ -122,16 +109,12 @@ logger.info('  test_y shape:  ' + str(test_y.shape))
 ###############################################################################################################################
 ## Optimizaer algorithm
 #
-import keras.optimizers as opt
-# optimizer = opt.RMSprop(lr=args.learn_rate)
 optimizer ='rmsprop'
 
 
 ###############################################################################################################################
 ## Building model
 #
-
-from models import create_model
 
 if args.loss == 'mse':
     loss = 'mean_squared_error'
@@ -143,15 +126,6 @@ else:
 # print(train_y.mean(axis=0))
 model = create_model(args, args.maxlen, len(ruling_embedding_test[0]), vocab, len(train_y[0]))
 model.compile(loss=loss, optimizer=optimizer, metrics=[metric])
-
-###############################################################################################################################
-## Save model architecture
-
-
-# logger.info('Saving model architecture')
-# with open(out_dir + '/model_arch.json', 'w') as arch:
-#     arch.write(model.to_json(indent=2))
-# logger.info('  Done')
 
 ###############################################################################################################################
 ## Evaluator

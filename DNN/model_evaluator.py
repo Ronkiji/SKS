@@ -1,10 +1,10 @@
-from scipy.stats import pearsonr, spearmanr, kendalltau
 import logging
-from sklearn.metrics import classification_report, f1_score, recall_score, precision_score, accuracy_score, roc_auc_score
 import numpy as np
+from sklearn.metrics import classification_report, f1_score, accuracy_score
 
 logger = logging.getLogger(__name__)
 
+# evaluates model with states and stores best result
 class Evaluator():
 
     def __init__(self, args, dataset, out_dir, test_x, test_chars, task_idx_test, ruling_embedding_test, test_y, batch_size):

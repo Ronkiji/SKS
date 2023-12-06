@@ -1,12 +1,13 @@
-import codecs
+from keras.preprocessing import sequence
 import logging
+import nltk
+from nltk.stem import WordNetLemmatizer
+import numpy as np
+import operator
 import pickle as pk
 import re
-
-import nltk
-import numpy as np
+import text_preprocess as tp
 import pandas as pd
-from nltk.text import TextCollection
 
 # from sklearn.feature_extraction.text import TfidfTransformer
 
@@ -15,6 +16,7 @@ num_regex = re.compile('^[+-]?[0-9]+\.?[0-9]*$')
 ref_scores_dtype = 'int32'
 
 
+# determines if token is a number
 def is_number(token):
     return bool(num_regex.match(token))
 
@@ -25,14 +27,13 @@ def load_vocab(vocab_path):
         vocab = pk.load(vocab_file)
     return vocab
 
+
+# tokenizes string to divide it into substrings
 def tokenize(string):
     tokens = nltk.word_tokenize(string)
-    # for index, token in enumerate(tokens):
-    #     if token == '@' and (index + 1) < len(tokens):
-    #         tokens[index + 1] = '@' + re.sub('[0-9]+.*', '', tokens[index + 1])
-    #         tokens.pop(index)
     return tokens
 
+# assigns value to every character a: 1, }: 69
 def get_dict():  # 字符词典
     dict = {}
     alphabet="abcdefghijklmnopqrstuvwxyz0123456789-,;.!?:'\"/\\|_@#$%^&*~`+-=<>()[]{}"
@@ -40,6 +41,8 @@ def get_dict():  # 字符词典
         dict[c] = i + 1
     return dict
 
+
+# string into value from get_dict
 def strToIndexs2(s, length = 300):
     s = s.lower()
     m = len(s)
@@ -53,26 +56,32 @@ def strToIndexs2(s, length = 300):
     return str2idx
 
 
+# create vocabulary from the tweets
 def create_vocab(tweets, vocab_size=0):
     logger.info('Creating vocabulary.........')
-    total_words, unique_words = 0, 0
-    word_freqs = {}
+    total_words, unique_words = 0, 0 # total words and unique words
+    word_freqs = {} # dictionary storing word frequencies
 
-        # next(input_file)
+    # next(input_file)
     for i in range(len(tweets)):
-        
-        tweet = tp.strip_hashtags(tweets[i])
-        # print(tweet)
-        content = tokenize(tweet)
+        tweet = tp.preprocess_clean(tweets[i],False,False)
+        content = tokenize(tweet) # break into substring
+        # either add to word count, or add as new word
         for word in content:
-            try:
+            # try:
+            #     word_freqs[word] += 1
+            # except KeyError:
+            #     unique_words += 1
+            #     word_freqs[word] = 1
+            # total_words += 1
+            if word in word_freqs:
                 word_freqs[word] += 1
-            except KeyError:
-                unique_words += 1
+            else:
                 word_freqs[word] = 1
             total_words += 1
+            unique_words = len(word_freqs)
     logger.info('  %i total words, %i unique words' % (total_words, unique_words))
-    import operator
+    # sorts word frequencies
     sorted_word_freqs = sorted(list(word_freqs.items()), key=operator.itemgetter(1), reverse=True)
     if vocab_size <= 0:
         # Choose vocab size automatically by removing all singletons
@@ -80,6 +89,7 @@ def create_vocab(tweets, vocab_size=0):
         for word, freq in sorted_word_freqs:
             if freq >= 1:
                 vocab_size += 1
+    # this part confuses me cause not all words are used...
     vocab = {'<pad>': 0, '<unk>': 1, '<word>': 2, '<no_word>': 3}   # The number 2 means that it contains dirty words, 3 means don't contain.
     vcb_len = len(vocab)
     index = vcb_len
@@ -89,19 +99,13 @@ def create_vocab(tweets, vocab_size=0):
     return vocab
 
 
-
-import text_preprocess as tp
-import pickle
-import functools
-from keras.preprocessing import sequence
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.model_selection import cross_val_predict, train_test_split
-
+# this is where the category embedding happens, for containing derogatory words or not
 def get_indices(tweets, vocab, word_list_path):
     from sklearn import preprocessing
     import enchant
     d = enchant.Dict('en-US')
 
+    # gets derogatory words
     with open(word_list_path, 'r', encoding='utf-8') as f:  # 得到词表
         word_list = f.read().split('\n')
     word_list = [s.lower() for s in word_list]
@@ -109,7 +113,7 @@ def get_indices(tweets, vocab, word_list_path):
     data_x, char_x, ruling_embedding, category_embedding = [], [], [], []
     unk_hit, total = 0., 0.
     for i in range(len(tweets)):
-        tweet = tp.strip_hashtags(tweets[i])
+        tweet = tp.preprocess_clean(tweets[i],False,False)
         # tweet = tweets[i]
         
         indices_char = []
@@ -120,18 +124,16 @@ def get_indices(tweets, vocab, word_list_path):
         n = len(content)
         t = False
         indices = []
-        category_indeics = []  # 脏词为0，错词为1，其他为2
+        category_indices = []  # Dirty words are 0, wrong words are 1, others are 2
         # for word in content:
         for j in range(n):
-            # if is_number(word):
-            #     indices.append(vocab['<num>'])
-            #     num_hit += 1
             word = content[j]
             if j < n-1:
                 word_2 = ' '.join(content[j:j+2])
             if j < n-2:
                 word_3 = ' '.join(content[j:j+3])
-
+            
+            # contains bad word
             if word in word_list or word_2 in word_list or word_3 in word_list:  # 3-gram
                 t = True
 
@@ -140,14 +142,14 @@ def get_indices(tweets, vocab, word_list_path):
             else:
                 indices.append(vocab['<unk>'])
                 unk_hit += 1
-
+            # bad word
             if word in word_list:
-                category_indeics.append(0)
+                category_indices.append(0)
             elif (not d.check(word)) and ('@' not in word) and (word not in
                   [':', ',', "''", '``', '!', "'s", '?', 'facebook', "n't","'re", "'", "'ve", 'everytime']):
-                category_indeics.append(1)
+                category_indices.append(1)
             else:
-                category_indeics.append(2)
+                category_indices.append(2)
             total += 1
 
         if t:
@@ -157,10 +159,12 @@ def get_indices(tweets, vocab, word_list_path):
         ruling_embedding.append(ruling)    # It corresponds to category embedding in the paper
         data_x.append(indices)
         char_x.append(indices_char)
-        category_embedding.append(category_indeics)   # It's just a category of words, it don't use now.
+        category_embedding.append(category_indices)   # It's just a category of words, it don't use now.
     logger.info('<unk> hit rate: %.2f%%' % (100 * unk_hit / total))
     return data_x, char_x, ruling_embedding, category_embedding
 
+
+# statistics of bad words, and number of bad words
 def get_statistics(tweets, labels, word_list_path):
     from sklearn import preprocessing
     import enchant
@@ -174,7 +178,7 @@ def get_statistics(tweets, labels, word_list_path):
     b0, b1, b2, b3, b4 = 0, 0, 0, 0, 0
     hate, non_hate = 0, 0
     for i in range(len(tweets)):
-        tweet = tp.strip_hashtags(tweets[i])
+        tweet = tp.preprocess_clean(tweets[i],False,False)
         content = tokenize(tweet)
         label = labels[i]
         dirty_word_num = 0
@@ -215,26 +219,8 @@ def turn2(Y):
             Y[i] -= 1
     return Y
 
-# def get_ruling(tweets, word_list_path):
-#     with open(word_list_path, 'r') as f:
-#         word_list = f.read().split('\n')
-#     word_list = [s.lower() for s in word_list]
-#     ruling_embedding = []
-#     for i in range(len(tweets)):
-#         tweet = tp.strip_hashtags(tweets[i])
-#         content = tokenize(tweet)
-#         t = False
-#         for word in content:
-#             if word in word_list:
-#                 t = True
-#         if t:
-#             ruling = [2]*150
-#         else:
-#             ruling = [3]*150
-#         ruling_embedding.append(ruling)
-#     return ruling_embedding
 
-
+# read the dataset specified
 def read_dataset(args, vocab_path, MAX_SEQUENCE_LENGTH):
     from keras.utils import to_categorical
 
@@ -253,12 +239,6 @@ def read_dataset(args, vocab_path, MAX_SEQUENCE_LENGTH):
     df_task_test = df_task_test[['tweet', 'label', 'task_idx']]
     print("test_task size>>>", len(df_task_test))
 
-    # print('training set.........')
-    # get_statistics(data_all.tweet, data_all.label, args.word_list_path)
-    # print('testing set........')
-    # get_statistics(df_task_test.tweet, df_task_test.label, args.word_list_path)
-    # print('done!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n\n')
-
 
     if args.sentiment_data_path:
         df_sentiment = pd.read_csv(args.sentiment_data_path)
@@ -270,23 +250,7 @@ def read_dataset(args, vocab_path, MAX_SEQUENCE_LENGTH):
         data_all = pd.concat([data_all, df_sentiment_train[['tweet', 'label', 'task_idx']]], ignore_index=True)
     print("test_task size>>>", len(df_task_test))
 
-    # if args.humor_data_path:
-    #     df_humor = pd.read_csv(args.humor_data_path)
-    #     df_humor['task_idx'] = [2]*len(df_humor)
-    #     df_humor['sequences_char_unorganized'] = df_humor.tweet.apply(lambda x : strToIndexs(x,alphabet_dict))
-    #     df_humor_train, df_humor_test = df_humor.iloc[:int(0.6*len(df_humor)), :], df_humor.iloc[int(0.9*len(df_humor)):, :]
-    #     df_task_test = df_task_test.append(df_humor_test[['sequences_char_unorganized', 'label', 'task_idx']])
-    #     data_all = data_all.append(df_humor_train[['sequences_char_unorganized', 'label', 'task_idx']])
-    #
-    # if args.sarcasm_data_path:
-    #     df_sarcasm = pd.read_csv(args.sarcasm_data_path)
-    #     df_sarcasm['task_idx'] = [3]*len(df_sarcasm)
-    #     df_sarcasm['sequences_char_unorganized'] = df_sarcasm.tweet.apply(lambda x : strToIndexs(x,alphabet_dict))
-    #     df_sarcasm_train, df_sarcasm_test = df_sarcasm.iloc[:int(0.9*len(df_sarcasm)), :], df_sarcasm.iloc[int(0.9*len(df_sarcasm)):, :]
-    #     df_task_test = df_task_test.append(df_sarcasm_test[['sequences_char_unorganized', 'label', 'task_idx']])
-    #     data_all = data_all.append(df_sarcasm_train[['sequences_char_unorganized', 'label', 'task_idx']])
-    # print('raw_data.tweet', len(raw_data.tweet))
-   
+    # creates vocab
     data_all.sample(frac=1)  # shuffle data
     if not vocab_path:
         data = data_all
@@ -299,6 +263,7 @@ def read_dataset(args, vocab_path, MAX_SEQUENCE_LENGTH):
     # ruling_embedding_train = get_ruling(data_all.tweet, args.word_list_path)
     # ruling_embedding_test = get_ruling(df_task_test.tweet, args.word_list_path)
 
+    # prepares data with categorical and word embedding complete
     data_tokens, train_chars, ruling_embedding_train, category_embedding_train = get_indices(data_all.tweet, vocab, args.word_list_path)  # 得到词、字符的索引
     X_test_data, test_chars, ruling_embedding_test, category_embedding_test = get_indices(df_task_test.tweet, vocab, args.word_list_path)
     Y = data_all['label']
@@ -313,15 +278,6 @@ def read_dataset(args, vocab_path, MAX_SEQUENCE_LENGTH):
     task_idx_test = np.array(list(df_task_test.task_idx), dtype='int32')
     task_idx_test = to_categorical(task_idx_test)
 
-    # X_train_data, X_test_data, y_train, y_test = train_test_split(X_train_data, y_train,
-    #                                                               test_size=0.15,
-    #                                                               random_state=20)
-
-    # train_chars, test_chars, task_idx_train, task_idx_test = train_test_split(train_chars, task_idx_train, test_size=0.15, random_state=20)
-
-    # ruling_embedding_train, ruling_embedding_test, category_embedding_train, category_embedding_test = train_test_split(ruling_embedding_train, 
-    #                                                                                     category_embedding_train, test_size=0.15, random_state=20)
-
     X_train_data = sequence.pad_sequences(X_train_data, maxlen=MAX_SEQUENCE_LENGTH)
     X_test_data = sequence.pad_sequences(X_test_data, maxlen=MAX_SEQUENCE_LENGTH)
     category_embedding_train = sequence.pad_sequences(category_embedding_train, maxlen=MAX_SEQUENCE_LENGTH)
@@ -331,16 +287,18 @@ def read_dataset(args, vocab_path, MAX_SEQUENCE_LENGTH):
         np.array(ruling_embedding_test, dtype=float), category_embedding_train, category_embedding_test, vocab
 
 
+# calls read_dataset and returns it?
 def get_data(args):
     # data_path = args.data_path
-    X_train_data, X_test_data, y_train, y_test, train_chars, test_chars, task_idx_train, task_idx_test, train_ruling_embedding, test_ruling_embedding, category_embedding_train, category_embedding_test, vocab = \
-        read_dataset(args, args.vocab_path, args.maxlen)
-    return X_train_data, X_test_data, y_train, y_test, train_chars, test_chars, task_idx_train, task_idx_test, train_ruling_embedding, test_ruling_embedding,\
-            category_embedding_train, category_embedding_test, vocab
+    # X_train_data, X_test_data, y_train, y_test, train_chars, test_chars, task_idx_train, task_idx_test, train_ruling_embedding, test_ruling_embedding, category_embedding_train, category_embedding_test, vocab = \
+    #     read_dataset(args, args.vocab_path, args.maxlen)
+    # return X_train_data, X_test_data, y_train, y_test, train_chars, test_chars, task_idx_train, task_idx_test, train_ruling_embedding, test_ruling_embedding,\
+    #         category_embedding_train, category_embedding_test, vocab
+    return read_dataset(args, args.vocab_path, args.maxlen)
 
 
+# gets hate word statistics
 def hate_word_statistics(tweet_file_path, hate_word_file_path):
-    from nltk.stem import WordNetLemmatizer
     wnl = WordNetLemmatizer()
     raw_data = pd.read_csv(tweet_file_path, sep=',', encoding="utf-8")
     with open(hate_word_file_path, "r") as f:
@@ -357,7 +315,7 @@ def hate_word_statistics(tweet_file_path, hate_word_file_path):
     print(statistics)
     for i in range(len(tweets)):
         statistics[int(labels[i]), 6] += 1  # 统计各个标签的数量
-        tweet = tp.strip_hashtags(tweets[i])
+        tweet = tp.preprocess_clean(tweets[i],False,False)
         num_hate = 0
         for hate_word in special_hate_word:
             # print(tweet.find(hate_word))

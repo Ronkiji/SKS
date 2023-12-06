@@ -1,18 +1,11 @@
+import keras as keras
 import keras.backend as K
 # import keras.tf_keras.keras.backend as K
+from keras.layers import GlobalMaxPooling1D, Dense, Dropout, GlobalAveragePooling1D, Concatenate, Layer
 import tensorflow as tf
-from keras import initializers, regularizers
-
-from keras import layers
-# from keras.layers.convolutional import Convolution1D
-import keras as keras
-from keras.layers import Flatten, GlobalMaxPooling1D, Dense, Convolution1D, Dropout,\
-							 GlobalAveragePooling1D, Concatenate, Layer, Add
-# from keras.engine.topology import Layer
-import numpy as np
-import sys
 
 
+# BaseLayer classs for building layers
 class BaseLayer(keras.layers.Layer):
     def build_layers(self, input_shape):
         shape = input_shape
@@ -21,6 +14,7 @@ class BaseLayer(keras.layers.Layer):
             shape=layer.compute_output_shape(shape)
 
 
+# ExpertModule_trm class defining an expert module for the HSMM model
 class ExpertModule_trm(keras.layers.Layer):
     def __init__(self, units, **kwargs):
         self.units = units
@@ -34,6 +28,7 @@ class ExpertModule_trm(keras.layers.Layer):
 
 
     def build(self, input_shape):
+        # Define layers for the expert module
         self.layers.append(MultiHeadAttention(4, 100))
         self.layers.append(Dropout(0.1))
         self.layers.append(Dense(400, activation='relu'))
@@ -51,6 +46,7 @@ class ExpertModule_trm(keras.layers.Layer):
 
 
     def call(self, inputs):
+        # Connect layers in the expert module
         xs = self.layers[0](inputs)
         xs = self.layers[1](xs)
         xs = self.layers[2](xs)
@@ -65,7 +61,7 @@ class ExpertModule_trm(keras.layers.Layer):
         return input_shape[0]+[self.units[1]]
 
 
-
+# GateModule class defining a gate module for the HSMM model
 class GateModule(BaseLayer):
     def __init__(self, units, **kwargs):
         self.units = units
@@ -75,6 +71,7 @@ class GateModule(BaseLayer):
         super(GateModule, self).__init__(**kwargs)
 
     def build(self, input_shape):
+        # Define layers for the gate module
         self.layers.append(MultiHeadAttention(4, 100))
         self.layers.append(Dropout(0.1))
         self.layers.append(Dense(400, activation='relu'))
@@ -92,6 +89,7 @@ class GateModule(BaseLayer):
 
 
     def call(self, inputs):
+        # Connect layers in the gate module
         xs = self.layers[0](inputs)
         xs = self.layers[1](xs)
         xs = self.layers[2](xs)
@@ -105,6 +103,8 @@ class GateModule(BaseLayer):
     def compute_output_shape(self, input_shape):
         return input_shape[0]+[self.units[-1]]
 
+
+# HSMMBottom class defining the bottom layer of the HSMM model
 class HSMMBottom(BaseLayer):
     # Hate Speech Mixture Model
     def __init__(self,
@@ -125,6 +125,7 @@ class HSMMBottom(BaseLayer):
         super(HSMMBottom, self).__init__(**kwargs)
 
     def build(self,input_shape):
+         # Build expert and gate modules
         for i in range(self.expert_num):
             expert = ExpertModule_trm(units=self.expert_units)
             expert.build(input_shape)
@@ -136,6 +137,7 @@ class HSMMBottom(BaseLayer):
         super(HSMMBottom,self).build(input_shape)
 
     def call(self, inputs):
+        # Build multiple experts
         # 构建多个expert
         expert_outputs=[]
         for expert in self.experts:
@@ -162,6 +164,7 @@ class HSMMBottom(BaseLayer):
     def compute_output_shape(self, input_shape):
         return [input_shape[0], self.task_num, self.expert_units[-1]]
 
+# HSMMTower class defining the tower layer of the HSMM model
 class HSMMTower(BaseLayer):
     # Hate Speech Mixture Model Tower
     def __init__(self,
@@ -172,6 +175,7 @@ class HSMMTower(BaseLayer):
         super(HSMMTower, self).__init__(**kwargs)
 
     def build(self, input_shape):
+        # Build layers for the tower
         for unit in self.units[:-1]:
             self.layers.append(Dense(unit, activation='relu'))
         self.layers.append(Dropout(0.1))
@@ -180,6 +184,7 @@ class HSMMTower(BaseLayer):
         super(HSMMTower,self).build(input_shape)
 
     def call(self, inputs):
+        # Connect layers in the tower
         for layer in self.layers:
             inputs = layer(inputs)
         return inputs
@@ -200,6 +205,7 @@ class MultiHeadAttention(Layer):
         super(MultiHeadAttention, self).__init__(**kwargs)
 
     def build(self, input_shape):
+        # Build the trainable weights for the Multi-Head Attention layer
         # 为该层创建一个可训练的权重
         #inputs.shape = (batch_size, time_steps, seq_len)
         self.kernel = self.add_weight(name='kernel',
@@ -214,6 +220,7 @@ class MultiHeadAttention(Layer):
         super(MultiHeadAttention, self).build(input_shape)  # 一定要在最后调用它
 
     def call(self, x):
+        # Perform the Multi-Head Attention computation
         out = []
         for i in range(self.heads):
             WQ = K.dot(x, self.kernel[0])
@@ -232,6 +239,7 @@ class MultiHeadAttention(Layer):
             V = K.batch_dot(QK,WV)
             out.append(V)
         out = Concatenate(axis=-1)(out)
+        # Project the concatenated output using a dense layer
         out = K.dot(out, self.dense)
         return out
 
