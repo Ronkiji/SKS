@@ -2,6 +2,8 @@ from keras.preprocessing import sequence
 import logging
 import nltk
 from nltk.stem import WordNetLemmatizer
+from nltk.corpus import wordnet
+from collections import Counter
 import numpy as np
 import operator
 import pickle as pk
@@ -15,18 +17,19 @@ logger = logging.getLogger(__name__)
 num_regex = re.compile('^[+-]?[0-9]+\.?[0-9]*$')
 ref_scores_dtype = 'int32'
 
+# download required NLTK datasets
+nltk.download('averaged_perceptron_tagger')
+nltk.download('wordnet')
 
 # determines if token is a number
 def is_number(token):
     return bool(num_regex.match(token))
-
 
 def load_vocab(vocab_path):
     logger.info('Loading vocabulary from: ' + vocab_path)
     with open(vocab_path, 'rb') as vocab_file:
         vocab = pk.load(vocab_file)
     return vocab
-
 
 # tokenizes string to divide it into substrings
 def tokenize(string):
@@ -41,7 +44,6 @@ def get_dict():  # 字符词典
         dict[c] = i + 1
     return dict
 
-
 # string into value from get_dict
 def strToIndexs2(s, length = 300):
     s = s.lower()
@@ -54,7 +56,6 @@ def strToIndexs2(s, length = 300):
         if c in dict:
             str2idx[i] = dict[c]
     return str2idx
-
 
 # create vocabulary from the tweets
 def create_vocab(tweets, vocab_size=0):
@@ -97,7 +98,6 @@ def create_vocab(tweets, vocab_size=0):
         vocab[word] = index
         index += 1
     return vocab
-
 
 # this is where the category embedding happens, for containing derogatory words or not
 def get_indices(tweets, vocab, word_list_path):
@@ -163,7 +163,6 @@ def get_indices(tweets, vocab, word_list_path):
     logger.info('<unk> hit rate: %.2f%%' % (100 * unk_hit / total))
     return data_x, char_x, ruling_embedding, category_embedding
 
-
 # statistics of bad words, and number of bad words
 def get_statistics(tweets, labels, word_list_path):
     from sklearn import preprocessing
@@ -219,7 +218,6 @@ def turn2(Y):
             Y[i] -= 1
     return Y
 
-
 # read the dataset specified
 def read_dataset(args, vocab_path, MAX_SEQUENCE_LENGTH):
     from keras.utils import to_categorical
@@ -230,7 +228,7 @@ def read_dataset(args, vocab_path, MAX_SEQUENCE_LENGTH):
     df_task_test = pd.read_csv(args.trial_data_path, encoding="utf-8")
 
     df_task['task_idx'] = [0]*len(df_task)
-    if args.data_path.split('/')[-1]!='df_train.csv':  # the 'df_train.csv' means SE datasets.
+    if args.data_path.split('/')[-1] not in ['df_train.csv', 'df_small_train.csv']:  # the 'df_train.csv' means SE datasets.
         df_task['label'] = df_task['class']  # 两个数据集的区别
     df_task_test['task_idx'] = [0]*len(df_task_test)
 
@@ -286,7 +284,6 @@ def read_dataset(args, vocab_path, MAX_SEQUENCE_LENGTH):
     return X_train_data, X_test_data, y_train, y_test, np.array(train_chars), np.array(test_chars), task_idx_train, task_idx_test, np.array(ruling_embedding_train, dtype=float), \
         np.array(ruling_embedding_test, dtype=float), category_embedding_train, category_embedding_test, vocab
 
-
 # calls read_dataset and returns it?
 def get_data(args):
     # data_path = args.data_path
@@ -294,8 +291,10 @@ def get_data(args):
     #     read_dataset(args, args.vocab_path, args.maxlen)
     # return X_train_data, X_test_data, y_train, y_test, train_chars, test_chars, task_idx_train, task_idx_test, train_ruling_embedding, test_ruling_embedding,\
     #         category_embedding_train, category_embedding_test, vocab
+    print(args.data_path)
+    hate_word_file_path = '../data/word_list/word_all.txt'
+    hate_word_statistics(args.data_path, hate_word_file_path)
     return read_dataset(args, args.vocab_path, args.maxlen)
-
 
 # gets hate word statistics
 def hate_word_statistics(tweet_file_path, hate_word_file_path):
@@ -306,13 +305,11 @@ def hate_word_statistics(tweet_file_path, hate_word_file_path):
     # print(hate_word_list, type(hate_word_list))
     # raw_data.drop(raw_data.index[0], inplace=True)
     tweets = raw_data.tweet.values
-    print(len(tweets))
-    labels = raw_data['class'].values
+    labels = raw_data['label'].values
     special_hate_word = ['jungle bunny', 'pissed off', 'porch monkey', 'blow job']
     # statistics = pd.DataFrame(columns=['0', '1', '2', '3', '4', '5+', 'num_totals'], index=[0, 1, 2])
     statistics = np.zeros((3, 7), dtype=int)
     ruling_embedding = []
-    print(statistics)
     for i in range(len(tweets)):
         statistics[int(labels[i]), 6] += 1  # 统计各个标签的数量
         tweet = tp.preprocess_clean(tweets[i],False,False)
@@ -323,10 +320,11 @@ def hate_word_statistics(tweet_file_path, hate_word_file_path):
                 num_hate += 1
         content = tokenize(tweet)
         for word in content:
-            # word = wnl.lemmatize(word, pos=get_pos(word))
-            word = wnl.lemmatize(word) # source of improvement?
+            lemma = wnl.lemmatize(word, pos=get_pos(word))
+            if word != lemma:
+                word = lemma
             if word in hate_word_list:
-                # print(word)
+                print(word)
                 num_hate += 1
         # if num_hate != 0 and labels[i] == 2:
             # print(content)
@@ -343,6 +341,34 @@ def hate_word_statistics(tweet_file_path, hate_word_file_path):
     statistics_df.to_csv('tweet_statistics.csv')
     print(statistics_df)
 
+
+# convert the part-of-speech naming scheme from the Penn Treebank tag to a WordNet tag.
+def get_wordnet_pos(treebank_tag):
+    if treebank_tag.startswith('J'):
+        return wordnet.ADJ
+    elif treebank_tag.startswith('V'):
+        return wordnet.VERB
+    elif treebank_tag.startswith('N'):
+        return wordnet.NOUN
+    elif treebank_tag.startswith('R'):
+        return wordnet.ADV
+    else:
+        return None
+
+# the Part Of Speech tag. Valid options are "n" for nouns, 
+# "v" for verbs, "a" for adjectives, "r" for adverbs and "s" for satellite adjectives
+def get_pos(word):
+    # tag the word with POS tags
+    tagged_words = nltk.pos_tag([word])
+
+    # get the most common POS tag
+    pos_counts = Counter(tag for _, tag in tagged_words)
+    most_common_pos = pos_counts.most_common(1)[0][0]
+
+    pos = get_wordnet_pos(most_common_pos) 
+
+    # convert to WordNet POS tag
+    return pos if pos != None else 'n'
 
 if __name__ == '__main__':
     tweet_file_path = '../data/labeled_data.csv'

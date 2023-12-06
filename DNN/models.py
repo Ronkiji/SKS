@@ -1,7 +1,6 @@
 import logging
 from keras import Model
 import keras.backend as K
-# import keras._tf_keras.keras.backend as K
 from keras.layers  import Dense, Dropout, Embedding, Input, concatenate, GlobalMaxPooling1D, GlobalAveragePooling1D
 from my_layers import HSMMBottom, HSMMTower, MultiHeadAttention
 import tensorflow as tf
