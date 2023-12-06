@@ -50,8 +50,15 @@ def create_model(args, overal_maxlen, ruling_dim, vocab, num_class):
 		# out = HSMMTower(units=[50,2])(expert_outputs)
 		for i in range(task_num):
 			tower_outputs.append(HSMMTower(units=[50, 2])(expert_outputs[:,i,:]))
-		out = tf.matmul(tf.stack(tower_outputs,axis=-1),tf.expand_dims(taskid_input,-1))  ## 交替训练
-		pred = tf.squeeze(out, axis=-1)
+
+		class WrapperLayer(tf.keras.layers.Layer):
+			def call(self, x):
+				tower_outputs, taskid_input = x
+				out = tf.matmul(tf.stack(tower_outputs,axis=-1),tf.expand_dims(taskid_input,-1))
+				return tf.squeeze(out, axis=-1)
+		pred = WrapperLayer()([tower_outputs, taskid_input])
+		# out = tf.matmul(tf.stack(tower_outputs,axis=-1),tf.expand_dims(taskid_input,-1))  ## 交替训练
+		# pred = tf.squeeze(out, axis=-1)
 		# pred = tf.nn.softmax(out,axis=-1)
 		model = tf.keras.Model(inputs=[sequence_input_word, taskid_input, ruling_input], outputs=pred)
 		model.emb_index = 0
