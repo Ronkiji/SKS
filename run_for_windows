@@ -1,1 +1,0 @@
-python train.py --trial data/SemEval_tasks/df_train.csv --s data/sentiment_datasets/train_E6oV3l.csv --word_list data/word_list/word_all.txt --emb glove.6B.300d.txt --output_dir b-512 --epochs 15 --lr 0.002 --maxlen 50 --HMM_transformer
