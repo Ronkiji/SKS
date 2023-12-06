@@ -324,7 +324,6 @@ def hate_word_statistics(tweet_file_path, hate_word_file_path):
             if word != lemma:
                 word = lemma
             if word in hate_word_list:
-                print(word)
                 num_hate += 1
         # if num_hate != 0 and labels[i] == 2:
             # print(content)
