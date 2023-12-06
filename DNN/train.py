@@ -10,14 +10,23 @@ import sys
 import utils as U
 import pickle as pk
 import os
+
+'''
 import tensorflow as tf
 
-from tensorflow.compat.v1 import ConfigProto
-from tensorflow.compat.v1 import InteractiveSession
-
-config = ConfigProto()
+config = tf.compat.v1.ConfigProto
 config.gpu_options.allow_growth = True
-session = InteractiveSession(config=config)
+session = tf.compat.v1.InteractiveSessionSession(config=config)
+'''
+import tensorflow as tf
+
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+    except RuntimeError as e:
+        print(e)
 
 
 logger = logging.getLogger(__name__)
@@ -113,7 +122,7 @@ logger.info('  test_y shape:  ' + str(test_y.shape))
 ###############################################################################################################################
 ## Optimizaer algorithm
 #
-import tensorflow.keras.optimizers as opt
+import keras.optimizers as opt
 # optimizer = opt.RMSprop(lr=args.learn_rate)
 optimizer ='rmsprop'
 

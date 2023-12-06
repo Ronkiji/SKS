@@ -236,8 +236,10 @@ def turn2(Y):
 
 
 def read_dataset(args, vocab_path, MAX_SEQUENCE_LENGTH):
-    from keras.utils import np_utils
+    from keras.utils import to_categorical
+
     from sklearn.utils import shuffle
+    print(args.data_path)
     df_task = pd.read_csv(args.data_path, encoding="utf-8")
     df_task_test = pd.read_csv(args.trial_data_path, encoding="utf-8")
 
@@ -302,14 +304,14 @@ def read_dataset(args, vocab_path, MAX_SEQUENCE_LENGTH):
     Y = data_all['label']
     Y = turn2(Y)
     y_test = df_task_test['label']
-    y_test = np_utils.to_categorical(y_test)
-    dummy_y = np_utils.to_categorical(Y)
+    y_test = to_categorical(y_test)
+    dummy_y = to_categorical(Y)
     X_train_data, y_train = data_tokens, dummy_y
 
     task_idx = np.array(list(data_all.task_idx), dtype='int32')
-    task_idx_train = np_utils.to_categorical(task_idx)
+    task_idx_train = to_categorical(task_idx)
     task_idx_test = np.array(list(df_task_test.task_idx), dtype='int32')
-    task_idx_test = np_utils.to_categorical(task_idx_test)
+    task_idx_test = to_categorical(task_idx_test)
 
     # X_train_data, X_test_data, y_train, y_test = train_test_split(X_train_data, y_train,
     #                                                               test_size=0.15,
@@ -325,8 +327,8 @@ def read_dataset(args, vocab_path, MAX_SEQUENCE_LENGTH):
     category_embedding_train = sequence.pad_sequences(category_embedding_train, maxlen=MAX_SEQUENCE_LENGTH)
     category_embedding_test = sequence.pad_sequences(category_embedding_test, maxlen=MAX_SEQUENCE_LENGTH)
 
-    return X_train_data, X_test_data, y_train, y_test, np.array(train_chars), np.array(test_chars), task_idx_train, task_idx_test, np.array(ruling_embedding_train, dtype=np.float), \
-        np.array(ruling_embedding_test, dtype=np.float), category_embedding_train, category_embedding_test, vocab
+    return X_train_data, X_test_data, y_train, y_test, np.array(train_chars), np.array(test_chars), task_idx_train, task_idx_test, np.array(ruling_embedding_train, dtype=float), \
+        np.array(ruling_embedding_test, dtype=float), category_embedding_train, category_embedding_test, vocab
 
 
 def get_data(args):
@@ -363,7 +365,8 @@ def hate_word_statistics(tweet_file_path, hate_word_file_path):
                 num_hate += 1
         content = tokenize(tweet)
         for word in content:
-            word = wnl.lemmatize(word, pos=get_pos(word))
+            # word = wnl.lemmatize(word, pos=get_pos(word))
+            word = wnl.lemmatize(word) # source of improvement?
             if word in hate_word_list:
                 # print(word)
                 num_hate += 1

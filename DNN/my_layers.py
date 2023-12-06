@@ -1,11 +1,11 @@
 import keras.backend as K
 import tensorflow as tf
-from tensorflow.keras import initializers, regularizers
+from keras import initializers, regularizers
 
-from tensorflow.keras import layers
+from keras import layers
 # from keras.layers.convolutional import Convolution1D
-import tensorflow.keras as keras
-from tensorflow.keras.layers import Flatten, GlobalMaxPooling1D, Dense, Convolution1D, Dropout,\
+import keras as keras
+from keras.layers import Flatten, GlobalMaxPooling1D, Dense, Convolution1D, Dropout,\
 							 GlobalAveragePooling1D, Concatenate, Layer, Add
 # from keras.engine.topology import Layer
 import numpy as np

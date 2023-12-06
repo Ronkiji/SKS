@@ -11,10 +11,10 @@ def create_model(args, overal_maxlen, ruling_dim, vocab, num_class):
 
 	import keras.backend as K
 	import keras
-	from keras.layers.embeddings import Embedding
+	from keras.layers import Embedding
 	from keras.models import Sequential
 	from keras import Model
-	from keras.layers.core import Dense, Dropout, Activation
+	from keras.layers  import Dense, Dropout, Activation
 	from my_layers import HSMMBottom, HSMMTower, MultiHeadAttention
 
 	###############################################################################################################################
@@ -29,7 +29,7 @@ def create_model(args, overal_maxlen, ruling_dim, vocab, num_class):
 
 	elif args.model_type == 'HHMM_transformer':
 		import tensorflow as tf
-		from tensorflow.keras.layers import Embedding, Input, concatenate
+		from keras.layers import Embedding, Input, concatenate
 		logger.info('Building a HHMM_transfermer')
 
 		task_num = 2  # Task数量2个
