@@ -208,13 +208,14 @@ class MultiHeadAttention(Layer):
         # Build the trainable weights for the Multi-Head Attention layer
         # 为该层创建一个可训练的权重
         #inputs.shape = (batch_size, time_steps, seq_len)
+        he_initialize = keras.initializers.he_normal()
         self.kernel = self.add_weight(name='kernel',
                                       shape=(3,input_shape[2], self.head_size),
-                                      initializer='uniform',
+                                      initializer=he_initialize,
                                       trainable=True)
         self.dense = self.add_weight(name='dense',
                                      shape=(input_shape[2], self.output_dim),
-                                     initializer='uniform',
+                                     initializer=he_initialize,
                                      trainable=True)
 
         super(MultiHeadAttention, self).build(input_shape)  # 一定要在最后调用它
