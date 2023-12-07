@@ -30,15 +30,15 @@ class ExpertModule_trm(keras.layers.Layer):
     def build(self, input_shape):
         # Define layers for the expert module
         self.layers.append(MultiHeadAttention(4, 100))
-        self.layers.append(Dropout(0.1))
+        self.layers.append(Dropout(0.2))
         self.layers.append(Dense(400, activation='relu'))
         self.layers.append(GlobalMaxPooling1D())
         self.layers.append(GlobalAveragePooling1D())
         self.layers.append(Concatenate())
-        self.layers.append(Dropout(0.1))
+        self.layers.append(Dropout(0.2))
         self.layers.append(Dense(self.units[0], activation='relu'))
         self.layers.append(Dense(self.units[1], activation='relu'))
-        self.layers.append(Dropout(0.1))
+        self.layers.append(Dropout(0.2))
         # self.layers.append(Add())
 
 
@@ -73,15 +73,15 @@ class GateModule(BaseLayer):
     def build(self, input_shape):
         # Define layers for the gate module
         self.layers.append(MultiHeadAttention(4, 100))
-        self.layers.append(Dropout(0.1))
+        self.layers.append(Dropout(0.2))
         self.layers.append(Dense(400, activation='relu'))
         self.layers.append(GlobalMaxPooling1D())
         self.layers.append(GlobalAveragePooling1D())
         self.layers.append(Concatenate())
-        self.layers.append(Dropout(0.1))
+        self.layers.append(Dropout(0.2))
         self.layers.append(Dense(self.units[0], activation='relu'))
         self.layers.append(Dense(self.units[0], activation='relu'))
-        self.layers.append(Dropout(0.1))
+        self.layers.append(Dropout(0.2))
         self.layers.append(Dense(self.units[1], activation='softmax'))
 
 
@@ -178,7 +178,7 @@ class HSMMTower(BaseLayer):
         # Build layers for the tower
         for unit in self.units[:-1]:
             self.layers.append(Dense(unit, activation='relu'))
-        self.layers.append(Dropout(0.1))
+        self.layers.append(Dropout(0.2))
         self.layers.append(Dense(self.units[-1], activation='softmax'))
         self.build_layers(input_shape)
         super(HSMMTower,self).build(input_shape)
