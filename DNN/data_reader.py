@@ -1,5 +1,6 @@
 from keras.preprocessing import sequence
 import logging
+from langdetect import detect, DetectorFactory
 import nltk
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import wordnet
@@ -16,6 +17,7 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 num_regex = re.compile('^[+-]?[0-9]+\.?[0-9]*$')
 ref_scores_dtype = 'int32'
+DetectorFactory.seed = 0
 
 # download required NLTK datasets
 nltk.download('averaged_perceptron_tagger')
@@ -33,8 +35,12 @@ def load_vocab(vocab_path):
 
 # tokenizes string to divide it into substrings
 def tokenize(string):
-    tokens = nltk.word_tokenize(string)
-    return tokens
+    try:
+        if detect(string) == 'es':
+            return nltk.word_tokenize(string, language="spanish")
+        return nltk.word_tokenize(string)
+    except Exception:
+        return nltk.word_tokenize(string)
 
 # assigns value to every character a: 1, }: 69
 def get_dict():  # 字符词典
