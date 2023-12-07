@@ -234,7 +234,7 @@ def read_dataset(args, vocab_path, MAX_SEQUENCE_LENGTH):
     df_task_test = pd.read_csv(args.trial_data_path, encoding="utf-8")
 
     df_task['task_idx'] = [0]*len(df_task)
-    if args.data_path.split('/')[-1] not in ['df_train.csv', 'df_small_train.csv']:  # the 'df_train.csv' means SE datasets.
+    if args.data_path.split('/')[-1] not in ['df_train.csv', 'df_small_train.csv', 'dv_train.csv']:  # the 'df_train.csv' means SE datasets.
         df_task['label'] = df_task['class']  # 两个数据集的区别
     df_task_test['task_idx'] = [0]*len(df_task_test)
 
@@ -314,7 +314,7 @@ def hate_word_statistics(tweet_file_path, hate_word_file_path):
     labels = raw_data['label'].values
     special_hate_word = ['jungle bunny', 'pissed off', 'porch monkey', 'blow job']
     # statistics = pd.DataFrame(columns=['0', '1', '2', '3', '4', '5+', 'num_totals'], index=[0, 1, 2])
-    statistics = np.zeros((2, 7), dtype=int)
+    statistics = np.zeros((3, 7), dtype=int)
     ruling_embedding = []
     for i in range(len(tweets)):
         statistics[int(labels[i]), 6] += 1  # 统计各个标签的数量
@@ -342,7 +342,7 @@ def hate_word_statistics(tweet_file_path, hate_word_file_path):
         else:
             ruling_embedding.append([0, 0, 0, 0, 0])
     pd.DataFrame(ruling_embedding).to_csv('ruling_embedding.csv', index=False)
-    statistics_df = pd.DataFrame(statistics, columns=['0', '1', '2', '3', '4', '5+', 'num_totals'], index=[0, 1])
+    statistics_df = pd.DataFrame(statistics, columns=['0', '1', '2', '3', '4', '5+', 'num_totals'], index=[0, 1, 2])
     statistics_df.to_csv('tweet_statistics.csv')
     print(statistics_df)
 
