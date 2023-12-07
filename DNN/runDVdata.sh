@@ -1,1 +1,1 @@
-python train.py -d ../data/SemEval_task5/df_train.csv --trial ../data/SemEval_task5/df_test.csv -s ../data/sentiment_datasets/train_E6oV3lV.csv --word_list ../data/word_list/word_all.txt --emb ../glove.6B.300d.txt -o output_dir -b 32 --epochs 15 --lr 0.002 --maxlen 50 -t HHMM_transformer
+python train.py -d ../data/davidson/dv_train.csv --trial ../data/davidson/dv_test.csv -s ../data/sentiment_datasets/train_E6oV3lV.csv --word_list ../data/word_list/word_all.txt --emb ../glove.840B.300d.txt -o output_dir -b 32 --epochs 15 --lr 0.002 --maxlen 50 -t HHMM_transformer
